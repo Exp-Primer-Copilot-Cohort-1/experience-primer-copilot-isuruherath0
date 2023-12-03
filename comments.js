@@ -1,72 +1,18 @@
-//create web server
-var express = require('express');
-var router = express.Router();
+// Create web server
+var http = require('http');
 var fs = require('fs');
+var url = require('url');
+var ROOT_DIR = "html/";
 
-//create database connection
-var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/test');
-var db = mongoose.connection;
-//create schema
-var commentSchema = mongoose.Schema({
-    Name: String,
-    Comment: String,
-    Date: String
-});
-//create model
-var Comment = mongoose.model('Comment', commentSchema);
-//get data from database
-var commentData = [];
-db.once('open', function() {
-    Comment.find(function(err, comment) {
-        if (err) return console.error(err);
-        commentData = comment;
-    });
-});
-//create router
-router.get('/', function(req, res) {
-    res.send(commentData);
-});
-router.post('/', function(req, res) {
-    var comment = new Comment({
-        Name: req.body.Name,
-        Comment: req.body.Comment,
-        Date: req.body.Date
-    });
-    comment.save(function(err, comment) {
-        if (err) return console.error(err);
-        commentData.push(comment);
-        res.send(commentData);
-    });
-});
-router.delete('/', function(req, res) {
-    var id = req.body.id;
-    Comment.remove({ _id: id }, function(err) {
-        if (err) return console.error(err);
-        for (var i = 0; i < commentData.length; i++) {
-            if (commentData[i]._id == id) {
-                commentData.splice(i, 1);
-            }
+http.createServer(function (req, res) {
+    var urlObj = url.parse(req.url, true, false);
+    fs.readFile(ROOT_DIR + urlObj.pathname, function (err, data) {
+        if (err) {
+            res.writeHead(404);
+            res.end(JSON.stringify(err));
+            return;
         }
-        res.send(commentData);
+        res.writeHead(200);
+        res.end(data);
     });
-});
-router.put('/', function(req, res) {
-    var id = req.body.id;
-    Comment.findOne({ _id: id }, function(err, comment) {
-        if (err) return console.error(err);
-        comment.Name = req.body.Name;
-        comment.Comment = req.body.Comment;
-        comment.Date = req.body.Date;
-        comment.save(function(err, comment) {
-            if (err) return console.error(err);
-            for (var i = 0; i < commentData.length; i++) {
-                if (commentData[i]._id == id) {
-                    commentData[i] = comment;
-                }
-            }
-            res.send(commentData);
-        });
-    });
-});
-module.exports = router;
+}).listen(8080);
